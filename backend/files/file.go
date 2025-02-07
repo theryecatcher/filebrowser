@@ -62,6 +62,9 @@ type ExtendedFileInfo struct {
 	OnlyOfficeId string            `json:"onlyOfficeId,omitempty"` // id for onlyoffice files
 	Source       string            `json:"source"`                 // associated index source for the file
 	RealPath     string            `json:"-"`
+	TotalFiles   int               `json:"totalFiles,omitempty"`   // number of files in the directory
+	TotalFolders int               `json:"totalFolders,omitempty"` // number of folders in the directory
+	NextPageKey  string            `json:"nextPageKey,omitempty"`  // key for pagination
 }
 
 // FileOptions are the options when getting a file info.
@@ -74,6 +77,7 @@ type FileOptions struct {
 	ReadHeader bool
 	Checker    users.Checker
 	Content    bool
+	Refresh    bool
 }
 
 func (f FileOptions) Components() (string, string) {
@@ -122,10 +126,11 @@ func FileInfoFaster(opts FileOptions) (ExtendedFileInfo, error) {
 	//	}
 	//	return info, nil
 	//}
-
-	err = index.RefreshFileInfo(opts)
-	if err != nil {
-		return response, err
+	if opts.Refresh {
+		err = index.RefreshFileInfo(opts)
+		if err != nil {
+			return response, err
+		}
 	}
 	info, exists := index.GetReducedMetadata(opts.Path, opts.IsDir)
 	if !exists {

@@ -149,6 +149,14 @@ func StartHttp(ctx context.Context, Service ImgService, storage *storage.Storage
 	go func() {
 		// Determine whether to use HTTPS (TLS) or HTTP
 		if config.Server.TLSCert != "" && config.Server.TLSKey != "" {
+			// validate the files exist first
+			if _, err := os.Stat(config.Server.TLSCert); os.IsNotExist(err) {
+				logger.Fatal(fmt.Sprintf("Could not find certificate file from path: %v", err))
+			}
+			if _, err := os.Stat(config.Server.TLSKey); os.IsNotExist(err) {
+				logger.Fatal(fmt.Sprintf("Could not find key file from path: %v", err))
+			}
+
 			// Load the TLS certificate and key
 			cer, err := tls.LoadX509KeyPair(config.Server.TLSCert, config.Server.TLSKey)
 			if err != nil {

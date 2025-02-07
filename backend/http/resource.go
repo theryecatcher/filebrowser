@@ -26,6 +26,7 @@ import (
 // @Accept json
 // @Produce json
 // @Param path query string true "Path to the resource"
+// @Param pageKey query string false "Key in the format 'folder:foldername' for pagination to start from, 'start:start' enables pagination from the beginning"
 // @Param source query string false "Source name for the desired source, default is used if not provided"
 // @Param source query string false "Name for the desired source, default is used if not provided"
 // @Param content query string false "Include file content if true"
@@ -40,21 +41,43 @@ func resourceGetHandler(w http.ResponseWriter, r *http.Request, d *requestContex
 	if source == "" {
 		source = "default"
 	}
+
 	// Decode the URL-encoded path
 	path, err := url.QueryUnescape(encodedPath)
 	if err != nil {
 		return http.StatusBadRequest, fmt.Errorf("invalid path encoding: %v", err)
 	}
+
+	pageKey := r.URL.Query().Get("pageKey")
+	splitPageKey := strings.Split(pageKey, ":")
+	if pageKey != "" && len(splitPageKey) != 2 {
+		return http.StatusBadRequest, fmt.Errorf("invalid pageKey format : %v", pageKey)
+	}
+	usePagination := len(splitPageKey) == 2
+	if usePagination {
+		if !(splitPageKey[0] == "folder" || splitPageKey[0] == "start" || splitPageKey[1] == "file") {
+			return http.StatusBadRequest, fmt.Errorf("invalid pageKey format : %v", pageKey)
+		}
+
+	}
+	startPagination := splitPageKey[0] == "start"
+
 	fileInfo, err := files.FileInfoFaster(files.FileOptions{
 		Path:    filepath.Join(d.user.Scope, path),
 		Modify:  d.user.Perm.Modify,
 		Source:  source,
 		Expand:  true,
 		Checker: d.user,
+		Refresh: startPagination || pageKey == "",
 		Content: r.URL.Query().Get("content") == "true",
 	})
 	if err != nil {
 		return errToStatus(err), err
+	}
+	if usePagination {
+		newFileInfo.Files
+		if splitPageKey[0] == "folder" {
+			
 	}
 	if fileInfo.Type == "directory" {
 		return renderJSON(w, r, fileInfo)
